@@ -24,6 +24,8 @@
 //! * `CubeList`, a low-level datatype with support for cubelist manipulation
 //!   (used when converting `BDD` functions to expressions).
 
+#[cfg(feature = "serde-borsh")]
+extern crate borsh;
 extern crate itertools;
 extern crate smallvec;
 

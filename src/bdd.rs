@@ -4,6 +4,8 @@
 // License.
 //
 
+#[cfg(feature = "serde-borsh")]
+use borsh::{BorshDeserialize, BorshSerialize};
 use itertools::Itertools;
 use std::cmp;
 use std::collections::hash_map::Entry as HashEntry;
@@ -28,6 +30,10 @@ pub const BDD_ONE: BDDFunc = usize::MAX - 1;
 
 pub(crate) type BDDLabel = usize;
 
+#[cfg_attr(
+    feature = "serde-borsh",
+    derive(BorshSerialize, BorshDeserialize, PartialOrd)
+)]
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub(crate) struct BDDNode {
     pub label: BDDLabel,
@@ -58,6 +64,7 @@ impl fmt::Debug for BDDNode {
     }
 }
 
+#[cfg_attr(feature = "serde-borsh", derive(BorshSerialize, BorshDeserialize))]
 #[derive(Clone, Debug)]
 pub(crate) struct LabelBDD {
     pub nodes: Vec<BDDNode>,
@@ -331,6 +338,7 @@ impl LabelBDD {
 /// tradeoff is that logical operations may be expensive: they are linear in
 /// BDD size, but BDDs may have exponential size (relative to terminal count)
 /// in the worst case.
+#[cfg_attr(feature = "serde-borsh", derive(BorshSerialize, BorshDeserialize))]
 #[derive(Clone, Debug)]
 pub struct BDD<T>
 where
@@ -825,6 +833,22 @@ mod test {
                     Expr::and(Expr::Terminal(0), Expr::Terminal(1))
                 )
         );
+    }
+
+    #[cfg(feature = "serde-borsh")]
+    #[test]
+    fn borsh_serialization() {
+        let mut b = BDD::new();
+        let expr = Expr::or(
+            Expr::and(Expr::Terminal(0), Expr::Terminal(1)),
+            Expr::and(Expr::not(Expr::Terminal(2)), Expr::not(Expr::Terminal(3))),
+        );
+        let _f = b.from_expr(&expr);
+
+        let serialized = borsh::to_vec(&b).unwrap();
+        let deserialized: BDD<u32> = BorshDeserialize::try_from_slice(&serialized).unwrap();
+        let other_serialized = borsh::to_vec(&deserialized).unwrap();
+        assert_eq!(serialized, other_serialized);
     }
 
     #[derive(Clone, Debug)]
